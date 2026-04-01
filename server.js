@@ -2,6 +2,7 @@ const express = require('express');
 const cors = require('cors');
 const path = require('path');
 const { initDb } = require('./database');
+const { runMigration } = require('./migrate');
 
 const app = express();
 app.use(cors());
@@ -23,6 +24,7 @@ const PORT = process.env.PORT || 3000;
 
 async function start() {
   await initDb();
+  await runMigration();
   app.listen(PORT, () => {
     console.log(`\n🚀 주식 모의투자 서버 실행 중: http://localhost:${PORT}\n`);
     stocksModule.crawlAllStocks().catch(err =>
