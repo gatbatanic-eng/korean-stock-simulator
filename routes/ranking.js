@@ -30,6 +30,7 @@ router.get('/students', (req, res) => {
       return {
         id: u.id,
         username: u.username,
+        nickname: u.nickname || u.username,
         team_id: u.team_id,
         team_name: u.team_id ? (teamMap[u.team_id] || '미지정') : '미지정',
         total,

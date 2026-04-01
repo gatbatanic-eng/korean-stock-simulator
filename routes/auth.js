@@ -88,7 +88,22 @@ router.get('/me', require('../middleware/auth'), (req, res) => {
   const user = db.findUserById(req.user.id);
   if (!user) return res.status(404).json({ error: '사용자를 찾을 수 없습니다.' });
   const { password_hash, ...safeUser } = user;
+  if (!safeUser.nickname) safeUser.nickname = safeUser.username;
   res.json(safeUser);
+});
+
+// 닉네임 변경
+router.put('/nickname', require('../middleware/auth'), (req, res) => {
+  const { nickname } = req.body;
+  if (!nickname || nickname.trim().length < 1) {
+    return res.status(400).json({ error: '닉네임을 입력해주세요.' });
+  }
+  if (nickname.trim().length > 20) {
+    return res.status(400).json({ error: '닉네임은 20자 이하여야 합니다.' });
+  }
+  const result = db.updateNickname(req.user.id, nickname.trim());
+  if (result.error) return res.status(400).json(result);
+  res.json(result);
 });
 
 module.exports = router;

@@ -41,11 +41,12 @@ let state = {
 };
 
 // ─── 로컬스토리지 ─────────────────────────────────────────────────────────────
-function saveAuth(token, username, cash, role) {
+function saveAuth(token, username, cash, role, nickname) {
   localStorage.setItem('token', token);
   localStorage.setItem('username', username);
   localStorage.setItem('cash', cash);
   localStorage.setItem('role', role || 'student');
+  localStorage.setItem('nickname', nickname || username);
 }
 function loadAuth() {
   const token = localStorage.getItem('token');
@@ -54,6 +55,7 @@ function loadAuth() {
     API.token = token;
     state.user = {
       username,
+      nickname: localStorage.getItem('nickname') || username,
       cash_balance: parseFloat(localStorage.getItem('cash') || 0),
       role: localStorage.getItem('role') || 'student'
     };
@@ -66,6 +68,7 @@ function clearAuth() {
   localStorage.removeItem('username');
   localStorage.removeItem('cash');
   localStorage.removeItem('role');
+  localStorage.removeItem('nickname');
   API.token = null;
   state.user = null;
 }
@@ -147,8 +150,8 @@ document.getElementById('login-form').addEventListener('submit', async e => {
     return;
   }
   API.token = data.token;
-  state.user = { username: data.username, cash_balance: data.cash_balance, role: data.role || 'student' };
-  saveAuth(data.token, data.username, data.cash_balance, data.role);
+  state.user = { username: data.username, nickname: data.username, cash_balance: data.cash_balance, role: data.role || 'student' };
+  saveAuth(data.token, data.username, data.cash_balance, data.role, data.username);
   enterApp();
 });
 
@@ -175,8 +178,8 @@ document.getElementById('register-form').addEventListener('submit', async e => {
     return;
   }
   API.token = data.token;
-  state.user = { username: data.username, cash_balance: data.cash_balance, role: data.role || 'student' };
-  saveAuth(data.token, data.username, data.cash_balance, data.role);
+  state.user = { username: data.username, nickname: data.username, cash_balance: data.cash_balance, role: data.role || 'student' };
+  saveAuth(data.token, data.username, data.cash_balance, data.role, data.username);
   enterApp();
 });
 
@@ -190,7 +193,7 @@ function enterApp() {
   document.getElementById('auth-page').classList.add('hidden');
   document.getElementById('navbar').classList.remove('hidden');
   document.getElementById('app').classList.remove('hidden');
-  document.getElementById('nav-username').textContent = state.user.username + ' 님';
+  document.getElementById('nav-username').textContent = (state.user.nickname || state.user.username) + ' 님';
   updateNavBalance();
 
   // 선생님이면 관리자 버튼 표시
@@ -221,6 +224,7 @@ function navigateTo(page) {
   else if (page === 'stocks') loadStocksList();
   else if (page === 'ranking') loadRanking();
   else if (page === 'admin') loadAdminPanel();
+  else if (page === 'mypage') loadMyPage();
 }
 
 // ─── 대시보드 ─────────────────────────────────────────────────────────────────
@@ -232,8 +236,9 @@ async function loadDashboard() {
   if (portfolio.error || user.error) return;
 
   state.user.cash_balance = user.cash_balance;
+  if (user.nickname) state.user.nickname = user.nickname;
   updateNavBalance();
-  saveAuth(API.token, state.user.username, user.cash_balance, state.user.role);
+  saveAuth(API.token, state.user.username, user.cash_balance, state.user.role, state.user.nickname);
 
   state.holdings = portfolio.holdings;
 
@@ -475,7 +480,7 @@ document.getElementById('trade-submit-btn').addEventListener('click', async () =
 
   state.user.cash_balance = result.cash_balance;
   updateNavBalance();
-  saveAuth(API.token, state.user.username, result.cash_balance, state.user.role);
+  saveAuth(API.token, state.user.username, result.cash_balance, state.user.role, state.user.nickname);
 
   await refreshHoldings();
   updateHoldingInfo();
@@ -646,7 +651,7 @@ async function loadStudentRanking() {
         ${data.map(u => `
           <tr class="${u.username === myName ? 'my-row' : ''}">
             <td class="rank-cell">${rankMedal(u.rank)}</td>
-            <td><strong>${u.username}</strong>${u.username === myName ? ' <span class="me-badge">나</span>' : ''}</td>
+            <td><strong>${u.nickname || u.username}</strong>${u.username === myName ? ' <span class="me-badge">나</span>' : ''}</td>
             <td>${u.team_name}</td>
             <td>${won(u.total)}</td>
             <td class="${priceClass(u.returnRate)}">${pct(u.returnRate)}</td>
@@ -799,6 +804,49 @@ document.getElementById('create-team-btn').addEventListener('click', async () =>
 document.getElementById('refresh-admin').addEventListener('click', () => {
   loadAdminTeams();
   loadAdminUsers();
+});
+
+// ─── 마이페이지 ──────────────────────────────────────────────────────────────
+async function loadMyPage() {
+  const user = await API.get('/auth/me');
+  if (user.error) return;
+
+  const nickname = user.nickname || user.username;
+  state.user.nickname = nickname;
+  saveAuth(API.token, state.user.username, state.user.cash_balance, state.user.role, nickname);
+  document.getElementById('nav-username').textContent = nickname + ' 님';
+
+  document.getElementById('mypage-username').textContent = user.username;
+  document.getElementById('mypage-role').textContent = user.role === 'teacher' ? '선생님' : '학생';
+  document.getElementById('mypage-current-nickname').textContent = nickname;
+  document.getElementById('new-nickname-input').value = '';
+  document.getElementById('nickname-error').classList.add('hidden');
+}
+
+document.getElementById('nickname-save-btn').addEventListener('click', async () => {
+  const newNickname = document.getElementById('new-nickname-input').value.trim();
+  const errEl = document.getElementById('nickname-error');
+  errEl.classList.add('hidden');
+
+  if (!newNickname) {
+    errEl.textContent = '닉네임을 입력해주세요.';
+    errEl.classList.remove('hidden');
+    return;
+  }
+
+  const result = await API.put('/auth/nickname', { nickname: newNickname });
+  if (result.error) {
+    errEl.textContent = result.error;
+    errEl.classList.remove('hidden');
+    return;
+  }
+
+  state.user.nickname = result.nickname;
+  saveAuth(API.token, state.user.username, state.user.cash_balance, state.user.role, result.nickname);
+  document.getElementById('nav-username').textContent = result.nickname + ' 님';
+  document.getElementById('mypage-current-nickname').textContent = result.nickname;
+  document.getElementById('new-nickname-input').value = '';
+  showToast('닉네임이 변경되었습니다.', 'success');
 });
 
 // ─── 초기화 ───────────────────────────────────────────────────────────────────

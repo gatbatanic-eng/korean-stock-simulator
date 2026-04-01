@@ -37,12 +37,22 @@ const db = {
       const id = Date.now();
       data.users.push({
         id, username, email, password_hash,
+        nickname: username,
         cash_balance: 10000000,
         team_id,
         role,
         created_at: new Date().toISOString()
       });
       return id;
+    });
+  },
+
+  updateNickname(userId, nickname) {
+    return atomicWrite(data => {
+      const user = data.users.find(u => u.id === userId);
+      if (!user) return { error: '사용자를 찾을 수 없습니다.' };
+      user.nickname = nickname;
+      return { nickname };
     });
   },
 
