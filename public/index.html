@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>주식 모의투자 - 실전처럼 배우는 투자</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <nav id="navbar" class="hidden">
+    <div class="nav-inner">
+      <div class="nav-logo">📈 모의투자</div>
+      <div class="nav-links">
+        <button class="nav-btn active" data-page="dashboard">대시보드</button>
+        <button class="nav-btn" data-page="trade">주식 거래</button>
+        <button class="nav-btn" data-page="history">거래 내역</button>
+        <button class="nav-btn" data-page="stocks">종목 목록</button>
+        <button class="nav-btn" data-page="ranking">랭킹</button>
+        <button class="nav-btn nav-btn-admin hidden" data-page="admin">관리자</button>
+      </div>
+      <div class="nav-user">
+        <span id="nav-username"></span>
+        <span id="nav-balance"></span>
+        <button id="logout-btn" class="btn-logout">로그아웃</button>
+      </div>
+    </div>
+  </nav>
+
+  <div id="auth-page">
+    <div class="auth-container">
+      <div class="auth-header">
+        <div class="auth-logo">📈</div>
+        <h1>주식 모의투자</h1>
+        <p>실전처럼 배우는 한국 주식 투자 시뮬레이터</p>
+        <div class="auth-features">
+          <span>💰 초기 자금 1,000만원</span>
+          <span>📊 실시간 주가 연동</span>
+          <span>🏆 수익률 경쟁</span>
+        </div>
+      </div>
+      <div class="auth-tabs">
+        <button class="auth-tab active" data-tab="login">로그인</button>
+        <button class="auth-tab" data-tab="register">회원가입</button>
+      </div>
+      <form id="login-form" class="auth-form">
+        <div class="form-group"><label>아이디</label><input type="text" id="login-username" placeholder="아이디 입력" required></div>
+        <div class="form-group"><label>비밀번호</label><input type="password" id="login-password" placeholder="비밀번호 입력" required></div>
+        <div id="login-error" class="error-msg hidden"></div>
+        <button type="submit" class="btn-primary btn-full">로그인</button>
+      </form>
+      <form id="register-form" class="auth-form hidden">
+        <div class="form-group"><label>아이디</label><input type="text" id="reg-username" placeholder="아이디 (영문/숫자, 3자 이상)" required></div>
+        <div class="form-group"><label>이메일</label><input type="email" id="reg-email" placeholder="이메일 주소" required></div>
+        <div class="form-group"><label>비밀번호</label><input type="password" id="reg-password" placeholder="비밀번호 (6자 이상)" required></div>
+        <div class="form-group" id="team-select-group">
+          <label>팀 선택 <span style="color:#888;font-size:0.85em">(선택사항)</span></label>
+          <select id="reg-team"><option value="">팀 없음</option></select>
+        </div>
+        <div class="form-group">
+          <label style="display:flex;align-items:center;gap:8px;cursor:pointer">
+            <input type="checkbox" id="reg-is-teacher" style="width:auto">
+            선생님 계정으로 가입
+          </label>
+        </div>
+        <div class="form-group hidden" id="teacher-code-group">
+          <label>선생님 코드</label>
+          <input type="text" id="reg-teacher-code" placeholder="선생님 코드 입력">
+        </div>
+        <div id="register-error" class="error-msg hidden"></div>
+        <button type="submit" class="btn-primary btn-full">회원가입 (초기 자금 1,000만원 지급)</button>
+      </form>
+    </div>
+  </div>
+
+  <main id="app" class="hidden">
+    <!-- 대시보드 -->
+    <div id="page-dashboard" class="page">
+      <div class="container">
+        <h2 class="page-title">내 포트폴리오</h2>
+        <div class="summary-grid">
+          <div class="summary-card cash"><div class="card-label">보유 현금</div><div class="card-value" id="dash-cash">-</div></div>
+          <div class="summary-card stock"><div class="card-label">주식 평가액</div><div class="card-value" id="dash-stock-value">-</div></div>
+          <div class="summary-card total"><div class="card-label">총 자산</div><div class="card-value" id="dash-total">-</div></div>
+          <div class="summary-card profit"><div class="card-label">총 수익률</div><div class="card-value" id="dash-return">-</div></div>
+        </div>
+        <div class="section-card">
+          <div class="section-header"><h3>보유 종목</h3><button class="btn-refresh" id="refresh-portfolio">🔄 새로고침</button></div>
+          <div id="holdings-container"><div class="loading">로딩 중...</div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 주식 거래 -->
+    <div id="page-trade" class="page hidden">
+      <div class="container">
+        <h2 class="page-title">주식 거래</h2>
+        <div class="section-card">
+          <div class="search-box">
+            <input type="text" id="stock-search-input" placeholder="종목명 또는 코드 검색 (예: 삼성전자)">
+            <button id="search-btn" class="btn-primary">검색</button>
+          </div>
+          <div id="search-results" class="search-results hidden"></div>
+        </div>
+        <div id="quote-card" class="section-card hidden">
+          <div class="quote-header">
+            <div><div class="quote-name" id="q-name">-</div><div class="quote-symbol" id="q-symbol">-</div></div>
+            <div class="quote-price-block"><div class="quote-price" id="q-price">-</div><div class="quote-change" id="q-change">-</div></div>
+          </div>
+          <div class="quote-details">
+            <div><span>전일종가</span><span id="q-prev">-</span></div>
+            <div><span>고가</span><span id="q-high">-</span></div>
+            <div><span>저가</span><span id="q-low">-</span></div>
+            <div><span>거래량</span><span id="q-vol">-</span></div>
+          </div>
+          <div class="trade-form">
+            <div class="trade-tabs">
+              <button class="trade-tab active" data-type="buy">매수</button>
+              <button class="trade-tab" data-type="sell">매도</button>
+            </div>
+            <div class="trade-inputs">
+              <div class="form-group"><label>수량 (주)</label>
+                <div class="qty-row">
+                  <button class="qty-btn" data-delta="-10">-10</button>
+                  <button class="qty-btn" data-delta="-1">-1</button>
+                  <input type="number" id="trade-qty" value="1" min="1">
+                  <button class="qty-btn" data-delta="1">+1</button>
+                  <button class="qty-btn" data-delta="10">+10</button>
+                </div>
+              </div>
+              <div class="trade-summary">
+                <div><span>현재가</span><span id="trade-price-display">-</span></div>
+                <div><span>예상 금액</span><span id="trade-total">-</span></div>
+                <div id="trade-holding-info"><span>보유 수량</span><span id="trade-holding-qty">0주</span></div>
+              </div>
+              <div id="trade-error" class="error-msg hidden"></div>
+              <button id="trade-submit-btn" class="btn-primary btn-full btn-buy">매수하기</button>
+            </div>
+          </div>
+        </div>
+        <div class="section-card"><h3>인기 종목</h3><div id="popular-stocks" class="popular-grid"><div class="loading">시세 조회 중...</div></div></div>
+      </div>
+    </div>
+
+    <!-- 종목 목록 -->
+    <div id="page-stocks" class="page hidden">
+      <div class="container">
+        <h2 class="page-title">전체 종목</h2>
+        <div class="section-card">
+          <div class="stocks-toolbar">
+            <div class="market-tabs">
+              <button class="market-tab active" data-market="KOSPI">KOSPI</button>
+              <button class="market-tab" data-market="KOSDAQ">KOSDAQ</button>
+            </div>
+            <input type="text" id="stocks-search" placeholder="종목명 검색...">
+          </div>
+          <div id="stocks-table-container"><div class="loading">종목 데이터를 불러오는 중...</div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 거래 내역 -->
+    <div id="page-history" class="page hidden">
+      <div class="container">
+        <h2 class="page-title">거래 내역</h2>
+        <div class="section-card"><div id="transactions-container"><div class="loading">로딩 중...</div></div></div>
+      </div>
+    </div>
+
+    <!-- 랭킹 -->
+    <div id="page-ranking" class="page hidden">
+      <div class="container">
+        <h2 class="page-title">🏆 랭킹</h2>
+        <div class="ranking-tabs">
+          <button class="ranking-tab active" data-rtab="students">학생 랭킹</button>
+          <button class="ranking-tab" data-rtab="teams">팀 랭킹</button>
+        </div>
+        <div id="ranking-students" class="section-card">
+          <div class="section-header"><h3>수익률 순위</h3><button class="btn-refresh" id="refresh-ranking">🔄 새로고침</button></div>
+          <div id="student-ranking-container"><div class="loading">랭킹 조회 중...</div></div>
+        </div>
+        <div id="ranking-teams" class="section-card hidden">
+          <div class="section-header"><h3>팀 랭킹 (평균 수익률 기준)</h3><button class="btn-refresh" id="refresh-team-ranking">🔄 새로고침</button></div>
+          <div id="team-ranking-container"><div class="loading">팀 랭킹 조회 중...</div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 관리자 (선생님 전용) -->
+    <div id="page-admin" class="page hidden">
+      <div class="container">
+        <h2 class="page-title">관리자 패널</h2>
+        <div class="section-card">
+          <div class="section-header"><h3>팀 관리</h3></div>
+          <div class="admin-team-create">
+            <input type="text" id="new-team-name" placeholder="새 팀 이름 입력">
+            <button id="create-team-btn" class="btn-primary">팀 만들기</button>
+          </div>
+          <div id="admin-teams-container"><div class="loading">로딩 중...</div></div>
+        </div>
+        <div class="section-card">
+          <div class="section-header"><h3>학생 관리</h3><button class="btn-refresh" id="refresh-admin">🔄 새로고침</button></div>
+          <div id="admin-users-container"><div class="loading">로딩 중...</div></div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <div id="toast" class="toast hidden"></div>
+  <script src="app.js"></script>
+</body>
+</html>
