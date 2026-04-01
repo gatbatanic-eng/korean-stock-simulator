@@ -20,14 +20,13 @@ router.post('/register', async (req, res) => {
     return res.status(400).json({ error: '비밀번호는 6자 이상이어야 합니다.' });
   }
   try {
-    if (db.findUserByUsername(username)) {
+    if (await db.findUserByUsername(username)) {
       return res.status(400).json({ error: '이미 사용 중인 아이디입니다.' });
     }
-    if (db.findUserByEmail(email)) {
+    if (await db.findUserByEmail(email)) {
       return res.status(400).json({ error: '이미 사용 중인 이메일입니다.' });
     }
 
-    // 선생님 계정 처리
     let role = 'student';
     if (teacher_code) {
       if (teacher_code !== TEACHER_CODE) {
@@ -36,17 +35,16 @@ router.post('/register', async (req, res) => {
       role = 'teacher';
     }
 
-    // 팀 유효성 검사
     let tid = null;
     if (role === 'student' && team_id) {
       tid = parseInt(team_id);
-      if (!db.findTeamById(tid)) {
+      if (!await db.findTeamById(tid)) {
         return res.status(400).json({ error: '존재하지 않는 팀입니다.' });
       }
     }
 
     const password_hash = await bcrypt.hash(password, 10);
-    const userId = db.createUser(username, email, password_hash, tid, role);
+    const userId = await db.createUser(username, email, password_hash, tid, role);
     const token = jwt.sign({ id: userId, username }, JWT_SECRET, { expiresIn: '7d' });
     res.json({ token, username, cash_balance: 10000000, role });
   } catch (err) {
@@ -62,7 +60,7 @@ router.post('/login', async (req, res) => {
     return res.status(400).json({ error: '아이디와 비밀번호를 입력해주세요.' });
   }
   try {
-    const user = db.findUserByUsername(username);
+    const user = await db.findUserByUsername(username);
     if (!user) {
       return res.status(401).json({ error: '아이디 또는 비밀번호가 올바르지 않습니다.' });
     }
@@ -79,21 +77,31 @@ router.post('/login', async (req, res) => {
 });
 
 // 팀 목록 조회 (공개 - 회원가입 시 사용)
-router.get('/teams', (req, res) => {
-  res.json(db.getTeams());
+router.get('/teams', async (req, res) => {
+  try {
+    res.json(await db.getTeams());
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: '서버 오류가 발생했습니다.' });
+  }
 });
 
 // 내 정보
-router.get('/me', require('../middleware/auth'), (req, res) => {
-  const user = db.findUserById(req.user.id);
-  if (!user) return res.status(404).json({ error: '사용자를 찾을 수 없습니다.' });
-  const { password_hash, ...safeUser } = user;
-  if (!safeUser.nickname) safeUser.nickname = safeUser.username;
-  res.json(safeUser);
+router.get('/me', require('../middleware/auth'), async (req, res) => {
+  try {
+    const user = await db.findUserById(req.user.id);
+    if (!user) return res.status(404).json({ error: '사용자를 찾을 수 없습니다.' });
+    const { password_hash, ...safeUser } = user;
+    if (!safeUser.nickname) safeUser.nickname = safeUser.username;
+    res.json(safeUser);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: '서버 오류가 발생했습니다.' });
+  }
 });
 
 // 닉네임 변경
-router.put('/nickname', require('../middleware/auth'), (req, res) => {
+router.put('/nickname', require('../middleware/auth'), async (req, res) => {
   const { nickname } = req.body;
   if (!nickname || nickname.trim().length < 1) {
     return res.status(400).json({ error: '닉네임을 입력해주세요.' });
@@ -101,9 +109,14 @@ router.put('/nickname', require('../middleware/auth'), (req, res) => {
   if (nickname.trim().length > 20) {
     return res.status(400).json({ error: '닉네임은 20자 이하여야 합니다.' });
   }
-  const result = db.updateNickname(req.user.id, nickname.trim());
-  if (result.error) return res.status(400).json(result);
-  res.json(result);
+  try {
+    const result = await db.updateNickname(req.user.id, nickname.trim());
+    if (result.error) return res.status(400).json(result);
+    res.json(result);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: '서버 오류가 발생했습니다.' });
+  }
 });
 
 module.exports = router;

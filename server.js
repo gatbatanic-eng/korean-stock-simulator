@@ -1,6 +1,7 @@
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
+const { initDb } = require('./database');
 
 const app = express();
 app.use(cors());
@@ -19,14 +20,23 @@ app.get('*', (req, res) => {
 });
 
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
-  console.log(`\n🚀 주식 모의투자 서버 실행 중: http://localhost:${PORT}\n`);
-  stocksModule.crawlAllStocks().catch(err =>
-    console.error('[stocks] 크롤링 오류:', err.message)
-  );
-  setInterval(() => {
+
+async function start() {
+  await initDb();
+  app.listen(PORT, () => {
+    console.log(`\n🚀 주식 모의투자 서버 실행 중: http://localhost:${PORT}\n`);
     stocksModule.crawlAllStocks().catch(err =>
-      console.error('[stocks] 주기적 크롤링 오류:', err.message)
+      console.error('[stocks] 크롤링 오류:', err.message)
     );
-  }, 60 * 60 * 1000); // 1시간마다 갱신
+    setInterval(() => {
+      stocksModule.crawlAllStocks().catch(err =>
+        console.error('[stocks] 주기적 크롤링 오류:', err.message)
+      );
+    }, 60 * 60 * 1000); // 1시간마다 갱신
+  });
+}
+
+start().catch(err => {
+  console.error('[server] 시작 실패:', err.message);
+  process.exit(1);
 });
