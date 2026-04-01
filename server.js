@@ -24,4 +24,9 @@ app.listen(PORT, () => {
   stocksModule.crawlAllStocks().catch(err =>
     console.error('[stocks] 크롤링 오류:', err.message)
   );
+  setInterval(() => {
+    stocksModule.crawlAllStocks().catch(err =>
+      console.error('[stocks] 주기적 크롤링 오류:', err.message)
+    );
+  }, 60 * 60 * 1000); // 1시간마다 갱신
 });
