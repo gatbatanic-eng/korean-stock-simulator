@@ -1,5 +1,6 @@
 const express = require('express');
 const router = express.Router();
+const bcrypt = require('bcryptjs');
 const db = require('../database');
 const authMiddleware = require('../middleware/auth');
 const { getPriceMap } = require('./stocks');
@@ -112,6 +113,30 @@ router.put('/users/:id/team', async (req, res) => {
     const ok = await db.updateUserTeam(userId, tid);
     if (!ok) return res.status(404).json({ error: '사용자를 찾을 수 없습니다.' });
     res.json({ message: '팀이 변경되었습니다.' });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: '서버 오류가 발생했습니다.' });
+  }
+});
+
+// ─── 비밀번호 초기화 ───────────────────────────────────────────────────────────
+router.put('/users/:id/reset-password', async (req, res) => {
+  const userId = parseInt(req.params.id);
+  const { password } = req.body;
+
+  if (!password || password.length < 6) {
+    return res.status(400).json({ error: '임시 비밀번호는 6자 이상이어야 합니다.' });
+  }
+
+  try {
+    const user = await db.findUserById(userId);
+    if (!user) return res.status(404).json({ error: '사용자를 찾을 수 없습니다.' });
+
+    const passwordHash = await bcrypt.hash(password, 10);
+    const ok = await db.resetPassword(userId, passwordHash);
+    if (!ok) return res.status(404).json({ error: '비밀번호 초기화에 실패했습니다.' });
+
+    res.json({ message: `${user.username}의 비밀번호가 초기화되었습니다.` });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: '서버 오류가 발생했습니다.' });

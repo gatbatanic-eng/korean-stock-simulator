@@ -229,11 +229,26 @@ function navigateTo(page) {
 
 // ─── 대시보드 ─────────────────────────────────────────────────────────────────
 async function loadDashboard() {
-  const [portfolio, user] = await Promise.all([
-    API.get('/portfolio'),
-    API.get('/auth/me')
-  ]);
-  if (portfolio.error || user.error) return;
+  let portfolio, user;
+  try {
+    [portfolio, user] = await Promise.all([
+      API.get('/portfolio'),
+      API.get('/auth/me')
+    ]);
+  } catch (err) {
+    document.getElementById('holdings-container').innerHTML =
+      '<div class="empty-state"><div>데이터를 불러오지 못했습니다. 새로고침 해주세요.</div></div>';
+    return;
+  }
+
+  if (portfolio.error || user.error) {
+    // 인증 오류면 로그아웃 후 로그인 화면으로
+    clearAuth();
+    document.getElementById('app').classList.add('hidden');
+    document.getElementById('navbar').classList.add('hidden');
+    document.getElementById('auth-page').classList.remove('hidden');
+    return;
+  }
 
   state.user.cash_balance = user.cash_balance;
   if (user.nickname) state.user.nickname = user.nickname;
@@ -759,7 +774,7 @@ async function loadAdminUsers() {
 
   container.innerHTML = `
     <table class="holdings-table">
-      <thead><tr><th>닉네임</th><th>이메일</th><th>현재 팀</th><th>총 자산</th><th>수익률</th><th>팀 변경</th></tr></thead>
+      <thead><tr><th>닉네임</th><th>이메일</th><th>현재 팀</th><th>총 자산</th><th>수익률</th><th>팀 변경</th><th>비밀번호</th></tr></thead>
       <tbody>
         ${users.map(u => `
           <tr>
@@ -772,6 +787,9 @@ async function loadAdminUsers() {
               <select class="team-change-select" data-user-id="${u.id}">
                 ${teamOptions.replace(`value="${u.team_id || ''}"`, `value="${u.team_id || ''}" selected`)}
               </select>
+            </td>
+            <td>
+              <button class="btn-warn btn-sm reset-pw-btn" data-user-id="${u.id}" data-username="${u.username}">초기화</button>
             </td>
           </tr>
         `).join('')}
@@ -786,6 +804,19 @@ async function loadAdminUsers() {
       if (result.error) { showToast(result.error, 'error'); return; }
       showToast('팀이 변경되었습니다.', 'success');
       loadAdminUsers();
+    });
+  });
+
+  container.querySelectorAll('.reset-pw-btn').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const userId = parseInt(btn.dataset.userId);
+      const username = btn.dataset.username;
+      const password = prompt(`"${username}"의 새 임시 비밀번호를 입력하세요. (6자 이상)`);
+      if (!password) return;
+      if (password.length < 6) { showToast('비밀번호는 6자 이상이어야 합니다.', 'error'); return; }
+      const result = await API.put(`/admin/users/${userId}/reset-password`, { password });
+      if (result.error) { showToast(result.error, 'error'); return; }
+      showToast(`${username}의 비밀번호가 초기화되었습니다.`, 'success');
     });
   });
 }

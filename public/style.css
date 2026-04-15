@@ -410,6 +410,11 @@ input:focus { border-color: var(--primary); background: #fff; }
   font-weight: 600; transition: background 0.15s;
 }
 .btn-danger:hover { background: #b91c1c; }
+.btn-warn { background: #d97706; color: #fff;
+  border: none; border-radius: 6px; cursor: pointer;
+  font-weight: 600; transition: background 0.15s;
+}
+.btn-warn:hover { background: #b45309; }
 .btn-sm { padding: 5px 14px; font-size: 0.82rem; }
 .team-change-select {
   padding: 5px 10px; border: 1.5px solid var(--border);

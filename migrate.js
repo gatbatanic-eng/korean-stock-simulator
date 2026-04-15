@@ -1,11 +1,10 @@
 /**
- * data.json → PostgreSQL 마이그레이션
+ * 초기 데이터 시드
  * - users 테이블에 이미 데이터가 있으면 자동으로 건너뜀 (중복 실행 안전)
  * - 직접 실행: node migrate.js
  */
-const { pool } = require('./database');
+const { db, initDb } = require('./database');
 
-// 기존 data.json의 데이터
 const SEED_TEAMS = [];
 
 const SEED_USERS = [
@@ -79,57 +78,50 @@ const SEED_TRANSACTIONS = [
   { user_id: 1774859771343, stock_symbol: '005930.KS', stock_name: '삼성전자',   type: 'sell', quantity: 1, price: 167450, total_amount: 167450, created_at: '2026-03-31T06:36:58.066Z' },
 ];
 
-async function runMigration() {
-  const existing = await pool.query('SELECT COUNT(*) FROM users');
-  if (parseInt(existing.rows[0].count) > 0) {
+function runMigration() {
+  const row = db.prepare('SELECT COUNT(*) as cnt FROM users').get();
+  if (row.cnt > 0) {
     console.log('[migrate] DB에 이미 데이터 있음 — 건너뜀');
     return;
   }
 
   console.log('[migrate] 시작: users 5, holdings 3, transactions 4, teams 0');
-  const client = await pool.connect();
-  try {
-    await client.query('BEGIN');
 
+  const seed = db.transaction(() => {
     for (const t of SEED_TEAMS) {
-      await client.query(
-        `INSERT INTO teams (id, name, created_at) VALUES ($1, $2, $3) ON CONFLICT (id) DO NOTHING`,
-        [t.id, t.name, t.created_at]
-      );
+      db.prepare(
+        `INSERT INTO teams (id, name, created_at) VALUES (?, ?, ?) ON CONFLICT (id) DO NOTHING`
+      ).run(t.id, t.name, t.created_at);
     }
 
     for (const u of SEED_USERS) {
-      await client.query(
+      db.prepare(
         `INSERT INTO users (id, username, email, password_hash, nickname, cash_balance, team_id, role, created_at)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) ON CONFLICT (id) DO NOTHING`,
-        [u.id, u.username, u.email, u.password_hash, u.nickname, u.cash_balance, u.team_id, u.role, u.created_at]
-      );
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT (id) DO NOTHING`
+      ).run(u.id, u.username, u.email, u.password_hash, u.nickname, u.cash_balance, u.team_id, u.role, u.created_at);
     }
 
     for (const h of SEED_HOLDINGS) {
-      await client.query(
+      db.prepare(
         `INSERT INTO holdings (id, user_id, stock_symbol, stock_name, quantity, avg_buy_price)
-         VALUES ($1, $2, $3, $4, $5, $6) ON CONFLICT (user_id, stock_symbol) DO NOTHING`,
-        [h.id, h.user_id, h.stock_symbol, h.stock_name, h.quantity, h.avg_buy_price]
-      );
+         VALUES (?, ?, ?, ?, ?, ?) ON CONFLICT (user_id, stock_symbol) DO NOTHING`
+      ).run(h.id, h.user_id, h.stock_symbol, h.stock_name, h.quantity, h.avg_buy_price);
     }
 
     for (const t of SEED_TRANSACTIONS) {
-      await client.query(
+      db.prepare(
         `INSERT INTO transactions (user_id, stock_symbol, stock_name, type, quantity, price, total_amount, created_at)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
-        [t.user_id, t.stock_symbol, t.stock_name, t.type, t.quantity, t.price, t.total_amount, t.created_at]
-      );
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
+      ).run(t.user_id, t.stock_symbol, t.stock_name, t.type, t.quantity, t.price, t.total_amount, t.created_at);
     }
+  });
 
-    await client.query('COMMIT');
-    console.log('[migrate] ✅ 마이그레이션 완료');
+  try {
+    seed();
+    console.log('[migrate] 마이그레이션 완료');
   } catch (e) {
-    await client.query('ROLLBACK');
-    console.error('[migrate] ❌ 실패:', e.message);
+    console.error('[migrate] 실패:', e.message);
     throw e;
-  } finally {
-    client.release();
   }
 }
 
@@ -137,7 +129,6 @@ module.exports = { runMigration };
 
 // 직접 실행 시
 if (require.main === module) {
-  runMigration()
-    .then(() => pool.end())
-    .catch(err => { console.error(err); process.exit(1); });
+  initDb();
+  runMigration();
 }
