@@ -45,7 +45,7 @@ router.post('/register', async (req, res) => {
 
     const password_hash = await bcrypt.hash(password, 10);
     const userId = await db.createUser(username, email, password_hash, tid, role);
-    const token = jwt.sign({ id: userId, username }, JWT_SECRET, { expiresIn: '7d' });
+    const token = jwt.sign({ id: userId, username }, JWT_SECRET, { expiresIn: '180d' });
     res.json({ token, username, cash_balance: 10000000, role });
   } catch (err) {
     console.error(err);
@@ -68,7 +68,7 @@ router.post('/login', async (req, res) => {
     if (!valid) {
       return res.status(401).json({ error: '아이디 또는 비밀번호가 올바르지 않습니다.' });
     }
-    const token = jwt.sign({ id: user.id, username: user.username }, JWT_SECRET, { expiresIn: '7d' });
+    const token = jwt.sign({ id: user.id, username: user.username }, JWT_SECRET, { expiresIn: '180d' });
     res.json({ token, username: user.username, cash_balance: user.cash_balance, role: user.role });
   } catch (err) {
     console.error(err);

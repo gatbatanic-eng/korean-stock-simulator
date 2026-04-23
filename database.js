@@ -146,7 +146,7 @@ const db = {
   // ─── 보유 종목 ─────────────────────────────────────────────────────────────
   async getHoldings(user_id) {
     const r = await pool.query(
-      'SELECT * FROM holdings WHERE user_id = $1 AND quantity > 0',
+      'SELECT * FROM holdings WHERE user_id = $1',
       [user_id]
     );
     return r.rows;

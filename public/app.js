@@ -242,11 +242,17 @@ async function loadDashboard() {
   }
 
   if (portfolio.error || user.error) {
-    // 인증 오류면 로그아웃 후 로그인 화면으로
-    clearAuth();
-    document.getElementById('app').classList.add('hidden');
-    document.getElementById('navbar').classList.add('hidden');
-    document.getElementById('auth-page').classList.remove('hidden');
+    const errMsg = portfolio.error || user.error;
+    const isAuthErr = errMsg.includes('토큰') || errMsg.includes('인증');
+    if (isAuthErr) {
+      clearAuth();
+      document.getElementById('app').classList.add('hidden');
+      document.getElementById('navbar').classList.add('hidden');
+      document.getElementById('auth-page').classList.remove('hidden');
+    } else {
+      document.getElementById('holdings-container').innerHTML =
+        `<div class="empty-state"><div>데이터를 불러오지 못했습니다: ${errMsg}</div></div>`;
+    }
     return;
   }
 
@@ -255,17 +261,17 @@ async function loadDashboard() {
   updateNavBalance();
   saveAuth(API.token, state.user.username, user.cash_balance, state.user.role, state.user.nickname);
 
-  state.holdings = portfolio.holdings;
+  state.holdings = portfolio.holdings.filter(h => h.quantity > 0);
 
   let stockValue = 0;
   const holdingsWithPrice = [];
 
-  if (portfolio.holdings.length > 0) {
+  if (state.holdings.length > 0) {
     const priceResults = await Promise.allSettled(
-      portfolio.holdings.map(h => API.get(`/stocks/quote/${encodeURIComponent(h.stock_symbol)}`))
+      state.holdings.map(h => API.get(`/stocks/quote/${encodeURIComponent(h.stock_symbol)}`))
     );
-    for (let i = 0; i < portfolio.holdings.length; i++) {
-      const h = portfolio.holdings[i];
+    for (let i = 0; i < state.holdings.length; i++) {
+      const h = state.holdings[i];
       const pr = priceResults[i];
       const currentPrice = pr.status === 'fulfilled' && !pr.value.error ? pr.value.price : h.avg_buy_price;
       const eval_ = currentPrice * h.quantity;
