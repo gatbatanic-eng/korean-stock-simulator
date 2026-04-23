@@ -817,12 +817,10 @@ async function loadAdminUsers() {
     btn.addEventListener('click', async () => {
       const userId = parseInt(btn.dataset.userId);
       const username = btn.dataset.username;
-      const password = prompt(`"${username}"의 새 임시 비밀번호를 입력하세요. (6자 이상)`);
-      if (!password) return;
-      if (password.length < 6) { showToast('비밀번호는 6자 이상이어야 합니다.', 'error'); return; }
-      const result = await API.put(`/admin/users/${userId}/reset-password`, { password });
+      if (!confirm(`"${username}"의 비밀번호를 "0000"으로 초기화할까요?`)) return;
+      const result = await API.put(`/admin/users/${userId}/reset-password`, {});
       if (result.error) { showToast(result.error, 'error'); return; }
-      showToast(`${username}의 비밀번호가 초기화되었습니다.`, 'success');
+      showToast(`${username}의 비밀번호가 "0000"으로 초기화되었습니다.`, 'success');
     });
   });
 }
