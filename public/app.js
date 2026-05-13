@@ -657,10 +657,12 @@ function renderStocksTable() {
   container.querySelectorAll('.stock-row').forEach(row => {
     row.querySelector('.btn-trade-row').addEventListener('click', e => {
       e.stopPropagation();
+      e.preventDefault();
       const price = parseFloat(row.dataset.price) || 0;
       openQuickTradeModal(row.dataset.symbol, row.dataset.name, price);
     });
-    row.addEventListener('click', () => {
+    row.addEventListener('click', e => {
+      if (e.target.closest('.btn-trade-row')) return;
       selectStock(row.dataset.symbol, row.dataset.name);
       navigateTo('trade');
     });
@@ -953,7 +955,6 @@ function openQuickTradeModal(symbol, name, currentPrice) {
 
   document.getElementById('qt-name').textContent = name;
   document.getElementById('qt-symbol').textContent = symbol;
-  document.getElementById('qt-price-display').textContent = currentPrice ? currentPrice.toLocaleString() + '원' : '-';
   document.getElementById('qt-qty').value = 1;
   document.getElementById('qt-error').classList.add('hidden');
 
@@ -965,11 +966,26 @@ function openQuickTradeModal(symbol, name, currentPrice) {
   const submitBtn = document.getElementById('qt-submit-btn');
   submitBtn.textContent = '매수하기';
   submitBtn.className = 'btn-primary btn-full btn-buy';
+  submitBtn.disabled = false;
 
   const h = state.holdings.find(x => x.stock_symbol === symbol);
   document.getElementById('qt-holding-qty').textContent = h ? h.quantity + '주' : '0주';
 
-  updateQtTotal();
+  if (currentPrice) {
+    document.getElementById('qt-price-display').textContent = currentPrice.toLocaleString() + '원';
+    updateQtTotal();
+  } else {
+    document.getElementById('qt-price-display').textContent = '조회 중...';
+    document.getElementById('qt-total').textContent = '-';
+    API.get(`/stocks/quote/${encodeURIComponent(symbol)}`).then(data => {
+      if (!data.error && data.price) {
+        modalCurrentPrice = data.price;
+        document.getElementById('qt-price-display').textContent = data.price.toLocaleString() + '원';
+        updateQtTotal();
+      }
+    });
+  }
+
   document.getElementById('quick-trade-modal').classList.remove('hidden');
 }
 
