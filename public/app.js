@@ -486,6 +486,7 @@ document.querySelectorAll('.trade-tab').forEach(btn => {
     submitBtn.className = 'btn-primary btn-full ' + (state.tradeType === 'buy' ? 'btn-buy' : 'btn-sell');
 
     updateHoldingInfo();
+    updateTradeTotal();
   });
 });
 document.querySelector('.trade-tab[data-type="buy"]').classList.add('buy-active');
@@ -505,11 +506,24 @@ function updateTradeTotal() {
   const price = state.currentPrice;
   document.getElementById('trade-price-display').textContent = price ? price.toLocaleString() + '원' : '-';
   document.getElementById('trade-total').textContent = price && qty ? won(price * qty) : '-';
+  document.getElementById('trade-balance').textContent = won(state.user.cash_balance);
+  if (price) {
+    if (state.tradeType === 'buy') {
+      const maxQty = Math.floor(state.user.cash_balance / price);
+      document.getElementById('trade-max-qty').textContent = maxQty.toLocaleString() + '주';
+    } else {
+      const h = state.holdings.find(x => x.stock_symbol === state.currentSymbol);
+      document.getElementById('trade-max-qty').textContent = (h ? h.quantity : 0).toLocaleString() + '주';
+    }
+  } else {
+    document.getElementById('trade-max-qty').textContent = '-';
+  }
 }
 
 function updateHoldingInfo() {
   const h = state.holdings.find(x => x.stock_symbol === state.currentSymbol);
   document.getElementById('trade-holding-qty').textContent = h ? h.quantity + '주' : '0주';
+  updateTradeTotal();
 }
 
 document.getElementById('trade-submit-btn').addEventListener('click', async () => {
@@ -992,6 +1006,18 @@ function openQuickTradeModal(symbol, name, currentPrice) {
 function updateQtTotal() {
   const qty = parseInt(document.getElementById('qt-qty').value) || 0;
   document.getElementById('qt-total').textContent = modalCurrentPrice && qty ? won(modalCurrentPrice * qty) : '-';
+  document.getElementById('qt-balance').textContent = won(state.user.cash_balance);
+  if (modalCurrentPrice) {
+    if (modalTradeType === 'buy') {
+      const maxQty = Math.floor(state.user.cash_balance / modalCurrentPrice);
+      document.getElementById('qt-max-qty').textContent = maxQty.toLocaleString() + '주';
+    } else {
+      const h = state.holdings.find(x => x.stock_symbol === modalSymbol);
+      document.getElementById('qt-max-qty').textContent = (h ? h.quantity : 0).toLocaleString() + '주';
+    }
+  } else {
+    document.getElementById('qt-max-qty').textContent = '-';
+  }
 }
 
 document.getElementById('quick-trade-close').addEventListener('click', () => {

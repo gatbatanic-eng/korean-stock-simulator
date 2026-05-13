@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>주식 모의투자 - 실전처럼 배우는 투자</title>
-  <link rel="stylesheet" href="style.css?v=5">
+  <link rel="stylesheet" href="style.css?v=6">
 </head>
 <body>
   <nav id="navbar" class="hidden">
@@ -135,6 +135,9 @@
                 <div><span>현재가</span><span id="trade-price-display">-</span></div>
                 <div><span>예상 금액</span><span id="trade-total">-</span></div>
                 <div id="trade-holding-info"><span>보유 수량</span><span id="trade-holding-qty">0주</span></div>
+                <div class="trade-summary-divider"></div>
+                <div><span>보유 잔고</span><span id="trade-balance">-</span></div>
+                <div><span>최대 주문 가능</span><span id="trade-max-qty" class="max-qty-badge">-</span></div>
               </div>
               <div id="trade-error" class="error-msg hidden"></div>
               <button id="trade-submit-btn" class="btn-primary btn-full btn-buy">매수하기</button>
@@ -283,6 +286,9 @@
             <div><span>현재가</span><span id="qt-price-display">-</span></div>
             <div><span>예상 금액</span><span id="qt-total">-</span></div>
             <div><span>보유 수량</span><span id="qt-holding-qty">0주</span></div>
+            <div class="trade-summary-divider"></div>
+            <div><span>보유 잔고</span><span id="qt-balance">-</span></div>
+            <div><span>최대 주문 가능</span><span id="qt-max-qty" class="max-qty-badge">-</span></div>
           </div>
           <div id="qt-error" class="error-msg hidden"></div>
           <button id="qt-submit-btn" class="btn-primary btn-full btn-buy">매수하기</button>
@@ -292,6 +298,6 @@
   </div>
 
   <div id="toast" class="toast hidden"></div>
-  <script src="app.js?v=5"></script>
+  <script src="app.js?v=6"></script>
 </body>
 </html>
