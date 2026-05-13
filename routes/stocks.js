@@ -619,20 +619,35 @@ function getPriceMap() {
 let indicatorsCache = null;
 const INDICATORS_TTL = 5 * 60 * 1000;
 
-async function fetchIndicator(urls) {
-  for (const url of urls) {
+async function fetchNaverIndex(code) {
+  for (const url of [
+    `https://polling.finance.naver.com/api/realtime/domestic/index/${code}`,
+    `https://m.stock.naver.com/api/index/${code}/basic`,
+  ]) {
     try {
       const { data } = await axios.get(url, { headers: NAVER_HEADERS, timeout: 8000 });
-      const d = data?.datas?.[0]
-        ?? data?.result?.areas?.[0]?.datas?.[0]
-        ?? data;
-      const value     = parseNum(d?.closePrice ?? d?.nv);
-      const change    = parseNum(d?.compareToPreviousClosePrice ?? d?.cv);
-      const changePct = parseNum(d?.fluctuationsRatio ?? d?.cr);
+      const d = data?.datas?.[0] ?? data?.result?.areas?.[0]?.datas?.[0] ?? data;
+      const value     = parseNum(d?.closePrice);
+      const change    = parseNum(d?.compareToPreviousClosePrice);
+      const changePct = parseNum(d?.fluctuationsRatio);
       if (value != null) return { value, change: change ?? 0, changePct: changePct ?? 0 };
-    } catch { /* 다음 URL 시도 */ }
+    } catch { /* 다음 URL */ }
   }
   return null;
+}
+
+async function fetchYahoo(symbol) {
+  try {
+    const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?interval=1d&range=1d`;
+    const { data } = await axios.get(url, { timeout: 8000 });
+    const meta = data?.chart?.result?.[0]?.meta;
+    if (!meta || meta.regularMarketPrice == null) return null;
+    const value    = meta.regularMarketPrice;
+    const prev     = meta.chartPreviousClose ?? 0;
+    const change   = prev ? value - prev : 0;
+    const changePct = prev ? (change / prev) * 100 : 0;
+    return { value, change, changePct };
+  } catch { return null; }
 }
 
 async function fetchMarketIndicators() {
@@ -640,22 +655,10 @@ async function fetchMarketIndicators() {
     return indicatorsCache.data;
   }
   const [kospi, kosdaq, usdkrw, wti] = await Promise.allSettled([
-    fetchIndicator([
-      'https://polling.finance.naver.com/api/realtime/domestic/index/KOSPI',
-      'https://m.stock.naver.com/api/index/KOSPI/basic',
-    ]),
-    fetchIndicator([
-      'https://polling.finance.naver.com/api/realtime/domestic/index/KOSDAQ',
-      'https://m.stock.naver.com/api/index/KOSDAQ/basic',
-    ]),
-    fetchIndicator([
-      'https://polling.finance.naver.com/api/realtime/world/exchange/FX_USDKRW',
-      'https://m.stock.naver.com/api/exchange/FX_USDKRW/basic',
-    ]),
-    fetchIndicator([
-      'https://polling.finance.naver.com/api/realtime/world/commodity/OIL_CL',
-      'https://m.stock.naver.com/api/commodity/OIL_CL/basic',
-    ]),
+    fetchNaverIndex('KOSPI'),
+    fetchNaverIndex('KOSDAQ'),
+    fetchYahoo('USDKRW=X'),
+    fetchYahoo('CL=F'),
   ]);
   const result = {
     kospi:     kospi.status  === 'fulfilled' ? kospi.value  : null,
