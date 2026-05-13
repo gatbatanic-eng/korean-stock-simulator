@@ -639,7 +639,7 @@ function renderStocksTable() {
     const changeStr = chg != null ? (chg >= 0 ? '+' : '') + Math.round(chg).toLocaleString('ko-KR') + '원' : '-';
     const pctStr = s.changePercent != null ? (s.changePercent >= 0 ? '+' : '') + s.changePercent.toFixed(2) + '%' : '-';
     const cls = chg == null ? 'neutral' : chg > 0 ? 'rise' : chg < 0 ? 'fall' : 'neutral';
-    return `<tr class="stock-row" data-symbol="${s.symbol}" data-name="${s.name}">
+    return `<tr class="stock-row" data-symbol="${s.symbol}" data-name="${s.name}" data-price="${s.price ?? 0}">
       <td>${i + 1}</td>
       <td><div class="stock-row-name">${s.name}</div><div class="stock-row-symbol">${code}</div></td>
       <td class="${cls}">${priceStr}</td>
@@ -657,8 +657,8 @@ function renderStocksTable() {
   container.querySelectorAll('.stock-row').forEach(row => {
     row.querySelector('.btn-trade-row').addEventListener('click', e => {
       e.stopPropagation();
-      selectStock(row.dataset.symbol, row.dataset.name);
-      navigateTo('trade');
+      const price = parseFloat(row.dataset.price) || 0;
+      openQuickTradeModal(row.dataset.symbol, row.dataset.name, price);
     });
     row.addEventListener('click', () => {
       selectStock(row.dataset.symbol, row.dataset.name);
@@ -1045,7 +1045,10 @@ document.getElementById('qt-submit-btn').addEventListener('click', async () => {
   updateNavBalance();
   saveAuth(API.token, state.user.username, result.cash_balance, state.user.role, state.user.nickname);
   document.getElementById('quick-trade-modal').classList.add('hidden');
-  await loadDashboard();
+  await refreshHoldings();
+  if (!document.getElementById('page-dashboard').classList.contains('hidden')) {
+    loadDashboard();
+  }
   showToast(result.message, 'success');
 });
 
