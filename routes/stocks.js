@@ -615,4 +615,67 @@ function getPriceMap() {
   return map;
 }
 
+// ─── 시장 지표 (KOSPI·KOSDAQ·달러/원·WTI) ─────────────────────────────────────
+let indicatorsCache = null;
+const INDICATORS_TTL = 5 * 60 * 1000;
+
+async function fetchIndicator(urls) {
+  for (const url of urls) {
+    try {
+      const { data } = await axios.get(url, { headers: NAVER_HEADERS, timeout: 8000 });
+      const d = data?.datas?.[0]
+        ?? data?.result?.areas?.[0]?.datas?.[0]
+        ?? data;
+      const value     = parseNum(d?.closePrice ?? d?.nv);
+      const change    = parseNum(d?.compareToPreviousClosePrice ?? d?.cv);
+      const changePct = parseNum(d?.fluctuationsRatio ?? d?.cr);
+      if (value != null) return { value, change: change ?? 0, changePct: changePct ?? 0 };
+    } catch { /* 다음 URL 시도 */ }
+  }
+  return null;
+}
+
+async function fetchMarketIndicators() {
+  if (indicatorsCache && (Date.now() - indicatorsCache.ts) < INDICATORS_TTL) {
+    return indicatorsCache.data;
+  }
+  const [kospi, kosdaq, usdkrw, wti] = await Promise.allSettled([
+    fetchIndicator([
+      'https://polling.finance.naver.com/api/realtime/domestic/index/KOSPI',
+      'https://m.stock.naver.com/api/index/KOSPI/basic',
+    ]),
+    fetchIndicator([
+      'https://polling.finance.naver.com/api/realtime/domestic/index/KOSDAQ',
+      'https://m.stock.naver.com/api/index/KOSDAQ/basic',
+    ]),
+    fetchIndicator([
+      'https://polling.finance.naver.com/api/realtime/world/exchange/FX_USDKRW',
+      'https://m.stock.naver.com/api/exchange/FX_USDKRW/basic',
+    ]),
+    fetchIndicator([
+      'https://polling.finance.naver.com/api/realtime/world/commodity/OIL_CL',
+      'https://m.stock.naver.com/api/commodity/OIL_CL/basic',
+    ]),
+  ]);
+  const result = {
+    kospi:     kospi.status  === 'fulfilled' ? kospi.value  : null,
+    kosdaq:    kosdaq.status === 'fulfilled' ? kosdaq.value : null,
+    usdkrw:    usdkrw.status === 'fulfilled' ? usdkrw.value : null,
+    wti:       wti.status    === 'fulfilled' ? wti.value    : null,
+    fetchedAt: new Date().toISOString(),
+  };
+  indicatorsCache = { data: result, ts: Date.now() };
+  return result;
+}
+
+router.get('/market-indicators', async (req, res) => {
+  try {
+    const data = await fetchMarketIndicators();
+    res.json(data);
+  } catch (err) {
+    console.error('[market-indicators]', err.message);
+    res.status(500).json({ error: '지표 조회 실패' });
+  }
+});
+
 module.exports = { router, crawlAllStocks, getPriceMap };

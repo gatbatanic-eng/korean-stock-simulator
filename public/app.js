@@ -227,8 +227,51 @@ function navigateTo(page) {
   else if (page === 'mypage') loadMyPage();
 }
 
+// ─── 시장 지표 위젯 ──────────────────────────────────────────────────────────
+async function loadMarketIndicators() {
+  const bar = document.getElementById('market-indicators-bar');
+  const data = await API.get('/stocks/market-indicators');
+  if (!data || data.error) {
+    bar.innerHTML = '<div style="padding:8px;color:#888;font-size:0.85rem">시장 지표를 불러오지 못했습니다.</div>';
+    return;
+  }
+
+  const CARDS = [
+    { key: 'kospi',  label: 'KOSPI',    fmt: v => v.toLocaleString('ko-KR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) },
+    { key: 'kosdaq', label: 'KOSDAQ',   fmt: v => v.toLocaleString('ko-KR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) },
+    { key: 'usdkrw', label: '달러/원',  fmt: v => v.toLocaleString('ko-KR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + '원' },
+    { key: 'wti',    label: 'WTI 원유', fmt: v => '$' + v.toFixed(2) },
+  ];
+
+  const cardsHTML = CARDS.map(c => {
+    const d = data[c.key];
+    if (!d || d.value == null) return `
+      <div class="indicator-card">
+        <div class="ind-label">${c.label}</div>
+        <div class="ind-value">-</div>
+        <div class="ind-change neutral">-</div>
+      </div>`;
+    const cls  = d.change > 0 ? 'rise' : d.change < 0 ? 'fall' : 'neutral';
+    const sign = d.change >= 0 ? '+' : '';
+    const changeStr = `${sign}${d.change.toFixed(2)} (${sign}${d.changePct.toFixed(2)}%)`;
+    return `
+      <div class="indicator-card">
+        <div class="ind-label">${c.label}</div>
+        <div class="ind-value ${cls}">${c.fmt(d.value)}</div>
+        <div class="ind-change ${cls}">${changeStr}</div>
+      </div>`;
+  }).join('');
+
+  const fetchedAt = new Date(data.fetchedAt);
+  const hh = String(fetchedAt.getHours()).padStart(2, '0');
+  const mm = String(fetchedAt.getMinutes()).padStart(2, '0');
+  bar.innerHTML = cardsHTML + `<div class="ind-updated">기준 ${hh}:${mm}</div>`;
+}
+
 // ─── 대시보드 ─────────────────────────────────────────────────────────────────
 async function loadDashboard() {
+  loadMarketIndicators();
+
   let portfolio, user;
   try {
     [portfolio, user] = await Promise.all([

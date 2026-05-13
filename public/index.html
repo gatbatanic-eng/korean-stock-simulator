@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>주식 모의투자 - 실전처럼 배우는 투자</title>
-  <link rel="stylesheet" href="style.css?v=3">
+  <link rel="stylesheet" href="style.css?v=4">
 </head>
 <body>
   <nav id="navbar" class="hidden">
@@ -78,6 +78,9 @@
     <div id="page-dashboard" class="page">
       <div class="container">
         <h2 class="page-title">내 포트폴리오</h2>
+        <div id="market-indicators-bar" class="market-indicators-bar">
+          <div class="loading" style="padding:10px;font-size:0.85rem">시장 지표 로딩 중...</div>
+        </div>
         <div class="summary-grid">
           <div class="summary-card cash"><div class="card-label">보유 현금</div><div class="card-value" id="dash-cash">-</div></div>
           <div class="summary-card stock"><div class="card-label">주식 평가액</div><div class="card-value" id="dash-stock-value">-</div></div>
@@ -289,6 +292,6 @@
   </div>
 
   <div id="toast" class="toast hidden"></div>
-  <script src="app.js?v=3"></script>
+  <script src="app.js?v=4"></script>
 </body>
 </html>

@@ -449,6 +449,43 @@ input:focus { border-color: var(--primary); background: #fff; }
   padding: 8px 0;
 }
 
+/* ─── 시장 지표 바 ─── */
+.market-indicators-bar {
+  background: var(--card);
+  border-radius: var(--radius);
+  padding: 14px 18px;
+  margin-bottom: 20px;
+  box-shadow: var(--shadow);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.indicator-card {
+  flex: 1; min-width: 130px;
+  padding: 10px 14px;
+  background: var(--bg);
+  border-radius: 8px;
+  text-align: center;
+}
+.ind-label {
+  font-size: 0.75rem; font-weight: 700;
+  color: var(--text-sub);
+  margin-bottom: 5px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.ind-value {
+  font-size: 1.05rem; font-weight: 700;
+  margin-bottom: 3px;
+}
+.ind-change { font-size: 0.78rem; font-weight: 500; }
+.ind-updated {
+  font-size: 0.73rem; color: var(--text-sub);
+  white-space: nowrap; align-self: flex-end;
+  padding-left: 4px; flex-shrink: 0;
+}
+
 /* ─── 모달 ─── */
 .modal-overlay {
   position: fixed; inset: 0; z-index: 1000;
