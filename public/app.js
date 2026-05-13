@@ -317,7 +317,7 @@ function renderHoldings(holdings) {
       </thead>
       <tbody>
         ${holdings.map(h => `
-          <tr>
+          <tr class="holding-row" data-symbol="${h.stock_symbol}" data-name="${h.stock_name}" data-price="${h.currentPrice}" title="클릭하여 매수/매도">
             <td><div class="stock-name-cell"><div class="name">${h.stock_name}</div><div class="symbol">${h.stock_symbol}</div></div></td>
             <td>${h.quantity.toLocaleString()}주</td>
             <td>${Math.round(h.avg_buy_price).toLocaleString()}원</td>
@@ -329,6 +329,12 @@ function renderHoldings(holdings) {
         `).join('')}
       </tbody>
     </table>`;
+
+  container.querySelectorAll('.holding-row').forEach(row => {
+    row.addEventListener('click', () => {
+      openQuickTradeModal(row.dataset.symbol, row.dataset.name, parseFloat(row.dataset.price));
+    });
+  });
 }
 
 document.getElementById('refresh-portfolio').addEventListener('click', loadDashboard);
@@ -784,7 +790,7 @@ async function loadAdminUsers() {
       <tbody>
         ${users.map(u => `
           <tr>
-            <td><strong>${u.username}</strong></td>
+            <td><strong class="user-detail-link" data-user-id="${u.id}" data-username="${u.username}">${u.username}</strong></td>
             <td style="font-size:0.85em;color:#888">${u.email}</td>
             <td>${u.team_name}</td>
             <td>${won(u.total)}</td>
@@ -801,6 +807,12 @@ async function loadAdminUsers() {
         `).join('')}
       </tbody>
     </table>`;
+
+  container.querySelectorAll('.user-detail-link').forEach(link => {
+    link.addEventListener('click', () => {
+      showAdminUserDetail(parseInt(link.dataset.userId), link.dataset.username);
+    });
+  });
 
   container.querySelectorAll('.team-change-select').forEach(sel => {
     sel.addEventListener('change', async () => {
@@ -883,6 +895,193 @@ document.getElementById('nickname-save-btn').addEventListener('click', async () 
   document.getElementById('new-nickname-input').value = '';
   showToast('닉네임이 변경되었습니다.', 'success');
 });
+
+// ─── 빠른 매수/매도 모달 (대시보드) ─────────────────────────────────────────
+let modalTradeType = 'buy';
+let modalSymbol = null;
+let modalName = null;
+let modalCurrentPrice = 0;
+
+function openQuickTradeModal(symbol, name, currentPrice) {
+  modalSymbol = symbol;
+  modalName = name;
+  modalCurrentPrice = currentPrice;
+  modalTradeType = 'buy';
+
+  document.getElementById('qt-name').textContent = name;
+  document.getElementById('qt-symbol').textContent = symbol;
+  document.getElementById('qt-price-display').textContent = currentPrice ? currentPrice.toLocaleString() + '원' : '-';
+  document.getElementById('qt-qty').value = 1;
+  document.getElementById('qt-error').classList.add('hidden');
+
+  document.querySelectorAll('#qt-tabs .trade-tab').forEach(btn => {
+    btn.classList.remove('active', 'buy-active', 'sell-active');
+  });
+  document.querySelector('#qt-tabs .trade-tab[data-type="buy"]').classList.add('active', 'buy-active');
+
+  const submitBtn = document.getElementById('qt-submit-btn');
+  submitBtn.textContent = '매수하기';
+  submitBtn.className = 'btn-primary btn-full btn-buy';
+
+  const h = state.holdings.find(x => x.stock_symbol === symbol);
+  document.getElementById('qt-holding-qty').textContent = h ? h.quantity + '주' : '0주';
+
+  updateQtTotal();
+  document.getElementById('quick-trade-modal').classList.remove('hidden');
+}
+
+function updateQtTotal() {
+  const qty = parseInt(document.getElementById('qt-qty').value) || 0;
+  document.getElementById('qt-total').textContent = modalCurrentPrice && qty ? won(modalCurrentPrice * qty) : '-';
+}
+
+document.getElementById('quick-trade-close').addEventListener('click', () => {
+  document.getElementById('quick-trade-modal').classList.add('hidden');
+});
+document.getElementById('quick-trade-modal').addEventListener('click', e => {
+  if (e.target === document.getElementById('quick-trade-modal')) {
+    document.getElementById('quick-trade-modal').classList.add('hidden');
+  }
+});
+
+document.querySelectorAll('#qt-tabs .trade-tab').forEach(btn => {
+  btn.addEventListener('click', () => {
+    modalTradeType = btn.dataset.type;
+    document.querySelectorAll('#qt-tabs .trade-tab').forEach(b => {
+      b.classList.remove('active', 'buy-active', 'sell-active');
+    });
+    btn.classList.add('active', modalTradeType === 'buy' ? 'buy-active' : 'sell-active');
+    const submitBtn = document.getElementById('qt-submit-btn');
+    submitBtn.textContent = modalTradeType === 'buy' ? '매수하기' : '매도하기';
+    submitBtn.className = 'btn-primary btn-full ' + (modalTradeType === 'buy' ? 'btn-buy' : 'btn-sell');
+  });
+});
+
+document.querySelectorAll('.qt-qty-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const input = document.getElementById('qt-qty');
+    const newVal = Math.max(1, parseInt(input.value || 1) + parseInt(btn.dataset.delta));
+    input.value = newVal;
+    updateQtTotal();
+  });
+});
+document.getElementById('qt-qty').addEventListener('input', updateQtTotal);
+
+document.getElementById('qt-submit-btn').addEventListener('click', async () => {
+  const errEl = document.getElementById('qt-error');
+  errEl.classList.add('hidden');
+  if (!modalSymbol) return;
+  const qty = parseInt(document.getElementById('qt-qty').value);
+  if (!qty || qty <= 0) {
+    errEl.textContent = '수량을 입력하세요.';
+    errEl.classList.remove('hidden');
+    return;
+  }
+  const submitBtn = document.getElementById('qt-submit-btn');
+  submitBtn.disabled = true;
+  const quote = await API.get(`/stocks/quote/${encodeURIComponent(modalSymbol)}`);
+  submitBtn.disabled = false;
+  if (quote.error) {
+    errEl.textContent = '시세 조회 실패: ' + quote.error;
+    errEl.classList.remove('hidden');
+    return;
+  }
+  const price = quote.price;
+  modalCurrentPrice = price;
+  document.getElementById('qt-price-display').textContent = price.toLocaleString() + '원';
+  updateQtTotal();
+
+  const endpoint = modalTradeType === 'buy' ? '/portfolio/buy' : '/portfolio/sell';
+  const result = await API.post(endpoint, { symbol: modalSymbol, name: modalName, quantity: qty, price });
+  if (result.error) {
+    errEl.textContent = result.error;
+    errEl.classList.remove('hidden');
+    return;
+  }
+  state.user.cash_balance = result.cash_balance;
+  updateNavBalance();
+  saveAuth(API.token, state.user.username, result.cash_balance, state.user.role, state.user.nickname);
+  document.getElementById('quick-trade-modal').classList.add('hidden');
+  await loadDashboard();
+  showToast(result.message, 'success');
+});
+
+// ─── 관리자 학생 상세 모달 ────────────────────────────────────────────────────
+document.getElementById('admin-detail-close').addEventListener('click', () => {
+  document.getElementById('admin-detail-modal').classList.add('hidden');
+});
+document.getElementById('admin-detail-modal').addEventListener('click', e => {
+  if (e.target === document.getElementById('admin-detail-modal')) {
+    document.getElementById('admin-detail-modal').classList.add('hidden');
+  }
+});
+
+async function showAdminUserDetail(userId, username) {
+  const modal = document.getElementById('admin-detail-modal');
+  const content = document.getElementById('admin-detail-content');
+  document.getElementById('admin-detail-title').textContent = username + ' 상세 정보';
+  content.innerHTML = '<div class="loading">로딩 중...</div>';
+  modal.classList.remove('hidden');
+
+  const data = await API.get(`/admin/users/${userId}/detail`);
+  if (data.error) {
+    content.innerHTML = `<div class="error-msg" style="padding:20px">${data.error}</div>`;
+    return;
+  }
+
+  const holdingsHTML = data.holdings.length === 0
+    ? '<div class="empty-state" style="padding:20px"><div class="empty-icon">📭</div><div>보유 종목이 없습니다.</div></div>'
+    : `<table class="holdings-table">
+        <thead><tr><th>종목</th><th>수량</th><th>평균단가</th><th>현재가</th><th>평가금액</th><th>손익</th><th>수익률</th></tr></thead>
+        <tbody>
+          ${data.holdings.map(h => `
+            <tr>
+              <td><div class="stock-name-cell"><div class="name">${h.stock_name}</div><div class="symbol">${h.stock_symbol}</div></div></td>
+              <td>${h.quantity.toLocaleString()}주</td>
+              <td>${Math.round(h.avg_buy_price).toLocaleString()}원</td>
+              <td>${Math.round(h.currentPrice).toLocaleString()}원</td>
+              <td>${Math.round(h.eval_).toLocaleString()}원</td>
+              <td class="${priceClass(h.pnl)}">${h.pnl >= 0 ? '+' : ''}${Math.round(h.pnl).toLocaleString()}원</td>
+              <td class="${priceClass(h.pnlPct)}">${pct(h.pnlPct)}</td>
+            </tr>
+          `).join('')}
+        </tbody>
+      </table>`;
+
+  const txHTML = data.transactions.length === 0
+    ? '<div class="empty-state" style="padding:20px"><div class="empty-icon">📋</div><div>거래 내역이 없습니다.</div></div>'
+    : `<table class="tx-table">
+        <thead><tr><th>일시</th><th>종류</th><th>종목</th><th>수량</th><th>체결가</th><th>거래금액</th></tr></thead>
+        <tbody>
+          ${data.transactions.map(t => `
+            <tr>
+              <td>${formatDate(t.created_at)}</td>
+              <td><span class="badge badge-${t.type}">${t.type === 'buy' ? '매수' : '매도'}</span></td>
+              <td><strong>${t.stock_name}</strong><br><small style="color:#888">${t.stock_symbol}</small></td>
+              <td>${t.quantity.toLocaleString()}주</td>
+              <td>${Math.round(t.price).toLocaleString()}원</td>
+              <td>${Math.round(t.total_amount).toLocaleString()}원</td>
+            </tr>
+          `).join('')}
+        </tbody>
+      </table>`;
+
+  content.innerHTML = `
+    <div class="detail-summary">
+      <div class="detail-card"><div class="detail-label">보유 현금</div><div class="detail-value">${won(data.cash_balance)}</div></div>
+      <div class="detail-card"><div class="detail-label">주식 평가액</div><div class="detail-value">${won(data.stockValue)}</div></div>
+      <div class="detail-card"><div class="detail-label">총 자산</div><div class="detail-value">${won(data.total)}</div></div>
+      <div class="detail-card"><div class="detail-label">수익률</div><div class="detail-value ${priceClass(data.returnRate)}">${pct(data.returnRate)}</div></div>
+    </div>
+    <div class="detail-section">
+      <h4>보유 종목</h4>
+      ${holdingsHTML}
+    </div>
+    <div class="detail-section">
+      <h4>최근 거래 내역 (최대 50건)</h4>
+      ${txHTML}
+    </div>`;
+}
 
 // ─── 초기화 ───────────────────────────────────────────────────────────────────
 if (loadAuth()) {

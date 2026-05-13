@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>주식 모의투자 - 실전처럼 배우는 투자</title>
-  <link rel="stylesheet" href="style.css?v=2">
+  <link rel="stylesheet" href="style.css?v=3">
 </head>
 <body>
   <nav id="navbar" class="hidden">
@@ -238,7 +238,57 @@
     </div>
   </main>
 
+  <!-- 관리자 학생 상세 모달 -->
+  <div id="admin-detail-modal" class="modal-overlay hidden">
+    <div class="modal-box modal-lg">
+      <div class="modal-header">
+        <h3 id="admin-detail-title">학생 상세</h3>
+        <button class="modal-close-btn" id="admin-detail-close">✕</button>
+      </div>
+      <div id="admin-detail-content" class="modal-body">
+        <div class="loading">로딩 중...</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 빠른 매수/매도 모달 (대시보드 보유종목) -->
+  <div id="quick-trade-modal" class="modal-overlay hidden">
+    <div class="modal-box">
+      <div class="modal-header">
+        <div>
+          <div id="qt-name" class="modal-stock-name">-</div>
+          <div id="qt-symbol" class="modal-stock-symbol">-</div>
+        </div>
+        <button class="modal-close-btn" id="quick-trade-close">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="trade-tabs" id="qt-tabs">
+          <button class="trade-tab active buy-active" data-type="buy">매수</button>
+          <button class="trade-tab" data-type="sell">매도</button>
+        </div>
+        <div class="trade-inputs">
+          <div class="form-group"><label>수량 (주)</label>
+            <div class="qty-row">
+              <button class="qty-btn qt-qty-btn" data-delta="-10">-10</button>
+              <button class="qty-btn qt-qty-btn" data-delta="-1">-1</button>
+              <input type="number" id="qt-qty" value="1" min="1">
+              <button class="qty-btn qt-qty-btn" data-delta="1">+1</button>
+              <button class="qty-btn qt-qty-btn" data-delta="10">+10</button>
+            </div>
+          </div>
+          <div class="trade-summary">
+            <div><span>현재가</span><span id="qt-price-display">-</span></div>
+            <div><span>예상 금액</span><span id="qt-total">-</span></div>
+            <div><span>보유 수량</span><span id="qt-holding-qty">0주</span></div>
+          </div>
+          <div id="qt-error" class="error-msg hidden"></div>
+          <button id="qt-submit-btn" class="btn-primary btn-full btn-buy">매수하기</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <div id="toast" class="toast hidden"></div>
-  <script src="app.js?v=2"></script>
+  <script src="app.js?v=3"></script>
 </body>
 </html>

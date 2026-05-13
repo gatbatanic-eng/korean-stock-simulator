@@ -139,4 +139,46 @@ router.put('/users/:id/reset-password', async (req, res) => {
   }
 });
 
+// ─── 학생 상세 (보유종목·잔고·거래내역) ────────────────────────────────────────
+router.get('/users/:id/detail', async (req, res) => {
+  const userId = parseInt(req.params.id);
+  try {
+    const user = await db.findUserById(userId);
+    if (!user || user.role === 'teacher') {
+      return res.status(404).json({ error: '사용자를 찾을 수 없습니다.' });
+    }
+    const [holdings, transactions] = await Promise.all([
+      db.getHoldings(userId),
+      db.getTransactions(userId, 50),
+    ]);
+    const priceMap = getPriceMap();
+    let stockValue = 0;
+    const holdingsWithPrice = holdings
+      .filter(h => h.quantity > 0)
+      .map(h => {
+        const currentPrice = priceMap[h.stock_symbol] ?? h.avg_buy_price;
+        const eval_ = currentPrice * h.quantity;
+        const pnl = eval_ - h.avg_buy_price * h.quantity;
+        const pnlPct = (pnl / (h.avg_buy_price * h.quantity)) * 100;
+        stockValue += eval_;
+        return { ...h, currentPrice, eval_, pnl, pnlPct };
+      });
+    const total = user.cash_balance + stockValue;
+    const returnRate = ((total - INITIAL_CAPITAL) / INITIAL_CAPITAL) * 100;
+    res.json({
+      username: user.username,
+      email: user.email,
+      cash_balance: user.cash_balance,
+      stockValue,
+      total,
+      returnRate,
+      holdings: holdingsWithPrice,
+      transactions,
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: '서버 오류가 발생했습니다.' });
+  }
+});
+
 module.exports = router;
