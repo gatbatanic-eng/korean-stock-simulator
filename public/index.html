@@ -177,17 +177,20 @@
     <div id="page-ranking" class="page hidden">
       <div class="container">
         <h2 class="page-title">🏆 랭킹</h2>
-        <div class="ranking-tabs">
-          <button class="ranking-tab active" data-rtab="students">학생 랭킹</button>
-          <button class="ranking-tab" data-rtab="teams">팀 랭킹</button>
-        </div>
-        <div id="ranking-students" class="section-card">
-          <div class="section-header"><h3>수익률 순위</h3><button class="btn-refresh" id="refresh-ranking">🔄 새로고침</button></div>
-          <div id="student-ranking-container"><div class="loading">랭킹 조회 중...</div></div>
-        </div>
-        <div id="ranking-teams" class="section-card hidden">
-          <div class="section-header"><h3>팀 랭킹 (평균 수익률 기준)</h3><button class="btn-refresh" id="refresh-team-ranking">🔄 새로고침</button></div>
-          <div id="team-ranking-container"><div class="loading">팀 랭킹 조회 중...</div></div>
+        <div class="section-card">
+          <div class="stocks-toolbar">
+            <div class="market-tabs">
+              <button class="ranking-tab active" data-rtab="students">학생 랭킹</button>
+              <button class="ranking-tab" data-rtab="teams">팀 랭킹</button>
+            </div>
+            <button class="btn-refresh" id="refresh-ranking">🔄 새로고침</button>
+          </div>
+          <div id="ranking-students">
+            <div id="student-ranking-container"><div class="loading">랭킹 조회 중...</div></div>
+          </div>
+          <div id="ranking-teams" class="hidden">
+            <div id="team-ranking-container"><div class="loading">팀 랭킹 조회 중...</div></div>
+          </div>
         </div>
       </div>
     </div>

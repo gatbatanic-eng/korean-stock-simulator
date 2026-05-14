@@ -709,8 +709,10 @@ document.querySelectorAll('.ranking-tab').forEach(btn => {
   });
 });
 
-document.getElementById('refresh-ranking').addEventListener('click', loadStudentRanking);
-document.getElementById('refresh-team-ranking').addEventListener('click', loadTeamRanking);
+document.getElementById('refresh-ranking').addEventListener('click', () => {
+  if (state.rankingTab === 'students') loadStudentRanking();
+  else loadTeamRanking();
+});
 
 async function loadRanking() {
   if (state.rankingTab === 'students') loadStudentRanking();
